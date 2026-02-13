@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=no">
-    <title>Орфо-галактика · Картинки</title>
+    <title>Орфо-галактика · Поворот 45°</title>
     <style>
         * {
             margin: 0;
@@ -136,7 +136,7 @@
             box-shadow: 0 0 20px cyan;
         }
 
-        /* Canvas — комета падает по центру */
+        /* Canvas — комета по центру */
         .canvas-wrap {
             position: relative;
             width: 100%;
@@ -171,7 +171,7 @@
             z-index: 30;
         }
 
-        /* Пушки — картинка cannon.png (или запасной вариант) */
+        /* Пушки — картинка cannon.png с поворотом на 45° против часовой */
         .cannons {
             display: flex;
             justify-content: center;
@@ -198,8 +198,15 @@
             cursor: pointer;
             transition: 0.07s;
             touch-action: manipulation;
-            /* Картинка пушки */
+            /* Картинка пушки с поворотом на 45° против часовой */
             background-image: url('cannon.png');
+            transform: rotate(-45deg);
+        }
+
+        /* Текст внутри пушки должен быть прямо */
+        .cannon span {
+            transform: rotate(45deg);
+            display: inline-block;
         }
 
         /* Запасной вариант, если нет картинки */
@@ -209,15 +216,27 @@
             border-radius: 30px 30px 60% 60%;
             box-shadow: 0 0 30px #0ff, inset 0 0 20px rgba(0,255,255,0.3);
             background-image: none;
+            transform: none;
+        }
+
+        .cannon.fallback span {
+            transform: none;
         }
 
         .cannon:active {
+            transform: rotate(-45deg) scale(0.85);
+        }
+
+        .cannon.fallback:active {
             transform: scale(0.85);
-            filter: brightness(1.5);
         }
 
         .cannon.fire {
             filter: brightness(2) drop-shadow(0 0 20px white);
+            transform: rotate(-45deg) scale(0.9);
+        }
+
+        .cannon.fallback.fire {
             transform: scale(0.9);
         }
 
@@ -365,16 +384,16 @@
             <div class="message" id="messageEl">⚡ СТАРТ ⚡</div>
         </div>
 
-        <!-- Пушки с буквами (картинка cannon.png) -->
+        <!-- Пушки с буквами (картинка cannon.png с поворотом 45° против часовой) -->
         <div class="cannons" id="cannonPanel">
-            <div class="cannon" data-letter="А">А</div>
-            <div class="cannon" data-letter="О">О</div>
-            <div class="cannon" data-letter="Е">Е</div>
-            <div class="cannon" data-letter="И">И</div>
-            <div class="cannon" data-letter="Я">Я</div>
-            <div class="cannon" data-letter="Ы">Ы</div>
-            <div class="cannon" data-letter="Ю">Ю</div>
-            <div class="cannon" data-letter="Э">Э</div>
+            <div class="cannon" data-letter="А"><span>А</span></div>
+            <div class="cannon" data-letter="О"><span>О</span></div>
+            <div class="cannon" data-letter="Е"><span>Е</span></div>
+            <div class="cannon" data-letter="И"><span>И</span></div>
+            <div class="cannon" data-letter="Я"><span>Я</span></div>
+            <div class="cannon" data-letter="Ы"><span>Ы</span></div>
+            <div class="cannon" data-letter="Ю"><span>Ю</span></div>
+            <div class="cannon" data-letter="Э"><span>Э</span></div>
         </div>
 
         <!-- Словарь -->
@@ -619,9 +638,10 @@
             // 5. ПРОВЕРКА КАРТИНОК
             // ----------------------------------------------------------------
             function checkImages() {
-                // fallback для пушек, если картинка не загрузится
                 const cannons = document.querySelectorAll('.cannon');
+                
                 cometImg.onerror = () => { console.log('comet.png не найдена, используется рисованный вариант'); };
+                
                 cannonImg.onerror = () => {
                     console.log('cannon.png не найдена, используется fallback');
                     cannons.forEach(c => c.classList.add('fallback'));
@@ -709,7 +729,7 @@
             }
 
             // ----------------------------------------------------------------
-            // 9. СПАВН КОМЕТЫ (ПО ЦЕНТРУ)
+            // 9. СПАВН КОМЕТЫ (ПО ЦЕНТРУ С ПОВОРОТОМ)
             // ----------------------------------------------------------------
             function spawnComet() {
                 if (paused || victory || !gameActive || gameOver) return;
@@ -734,8 +754,9 @@
                     step: 0,
                     x, y,
                     speed: 0.75,
-                    width: 220,   // для коллизий
-                    height: 90
+                    width: 220,
+                    height: 90,
+                    rotation: -45 * Math.PI / 180 // поворот на -45 градусов (против часовой)
                 };
             }
 
@@ -747,7 +768,7 @@
 
                 const word = words.find(w => w.id === currentComet.wordId);
                 if (word && !word.learned) {
-                    word.learned = true;  // сразу в словарь
+                    word.learned = true;
                 }
 
                 score += 100;
@@ -787,7 +808,6 @@
                 const expected = comet.letters[comet.step];
 
                 if (letter === expected) {
-                    // попадание
                     const idx = comet.missing[comet.step];
                     let arr = comet.currentDisplay.split('');
                     arr[idx] = letter;
@@ -801,7 +821,6 @@
                         setMessage('КОМЕТА РАЗРУШЕНА', true);
                     }
                 } else {
-                    // ошибка
                     setMessage('ОШИБКА', false);
                     lives--;
                     updateLivesUI();
@@ -857,22 +876,24 @@
             }
 
             // ----------------------------------------------------------------
-            // 13. ОТРИСОВКА
+            // 13. ОТРИСОВКА С ПОВОРОТОМ КОМЕТЫ
             // ----------------------------------------------------------------
             function draw() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // КОМЕТА с картинкой
+                // КОМЕТА с картинкой ПОВЁРНУТОЙ на -45°
                 if (currentComet) {
                     const c = currentComet;
                     
+                    ctx.save();
+                    ctx.translate(c.x, c.y);
+                    ctx.rotate(c.rotation);
+                    
                     // Картинка кометы (подложка)
                     if (cometImg.complete && cometImg.naturalHeight > 0) {
-                        ctx.drawImage(cometImg, c.x - 110, c.y - 45, 220, 90);
+                        ctx.drawImage(cometImg, -110, -45, 220, 90);
                     } else {
                         // fallback — рисованный астероид
-                        ctx.save();
-                        ctx.translate(c.x, c.y);
                         ctx.shadowColor = '#0ff';
                         ctx.shadowBlur = 35;
                         ctx.fillStyle = '#2a1e4a';
@@ -889,10 +910,10 @@
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
-                        ctx.restore();
                     }
+                    ctx.restore();
 
-                    // Текст ПОВЕРХ картинки
+                    // Текст ПОВЕРХ картинки (без поворота)
                     ctx.font = 'bold 26px "Courier New", monospace';
                     ctx.fillStyle = '#ffffff';
                     ctx.shadowColor = '#0ff';
