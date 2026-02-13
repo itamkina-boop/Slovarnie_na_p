@@ -1,16 +1,1018 @@
-<!doctype html>
-<html>
-<body>
-  <div class="container">
-    <h1>hello, world</h1>
-    <hr>
-    <p>
-      <a href="#" class="btn btn-primary btn-lg" id="alert">alert</a>
-    </p>
-  </div>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=no">
+    <title>Орфо-галактика · Картинки</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+            user-select: none;
+        }
 
-  <script src="vendor/jquery.min.js"></script>
-  <script src="vendor/bootstrap/js/bootstrap.min.js"></script>
-  <script src="script.js"></script>
+        body {
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 12px;
+        }
+
+        .game {
+            max-width: 1000px;
+            width: 100%;
+            background: #03050f;
+            border-radius: 48px;
+            border: 1px solid rgba(0, 255, 255, 0.6);
+            box-shadow: 0 0 60px rgba(0, 200, 255, 0.4);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Космический фон */
+        .space-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .planet {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ffd966, #b87c3a);
+            opacity: 0.25;
+            box-shadow: 0 0 60px rgba(255, 200, 100, 0.3);
+        }
+
+        .planet1 { width: 180px; height: 180px; top: 5%; left: -40px; background: radial-gradient(circle at 30% 30%, #6b8cff, #2a3f7a); }
+        .planet2 { width: 220px; height: 220px; bottom: -60px; right: -50px; background: radial-gradient(circle at 40% 40%, #ff9a9a, #7a2a2a); }
+        .planet3 { width: 130px; height: 130px; top: 50%; right: 15%; background: radial-gradient(circle at 30% 30%, #7aff7a, #2a7a2a); }
+        
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px white;
+            animation: moveStar 10s linear infinite;
+        }
+
+        @keyframes moveStar {
+            from { transform: translateY(-10px) translateX(-10px); opacity: 0.8; }
+            to { transform: translateY(110%) translateX(20px); opacity: 0; }
+        }
+
+        /* Верхняя панель */
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 0 10px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .lives {
+            display: flex;
+            gap: 10px;
+        }
+
+        .life {
+            width: 35px;
+            height: 35px;
+            background: #0ff;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            box-shadow: 0 0 20px #0ff;
+            transition: 0.2s;
+        }
+
+        .life.dim { opacity: 0.2; background: #3a5a6a; box-shadow: none; }
+
+        .stats-right {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .learned-counter {
+            font-size: 28px;
+            font-weight: 900;
+            color: #b8ffff;
+            text-shadow: 0 0 15px cyan;
+            background: rgba(0, 255, 255, 0.1);
+            padding: 8px 20px;
+            border-radius: 40px;
+            border: 1px solid cyan;
+        }
+
+        .score {
+            font-size: 32px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 15px #ffaa00;
+        }
+
+        .pause-btn {
+            background: rgba(0,255,255,0.1);
+            border: 2px solid cyan;
+            color: cyan;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            cursor: pointer;
+            box-shadow: 0 0 20px cyan;
+        }
+
+        /* Canvas — комета падает по центру */
+        .canvas-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1.1;
+            background: rgba(0,0,0,0.4);
+            border-radius: 30px;
+            border: 1px solid rgba(0,255,255,0.7);
+            box-shadow: inset 0 0 80px rgba(0,200,255,0.2);
+            overflow: hidden;
+            margin-bottom: 20px;
+            z-index: 10;
+            backdrop-filter: blur(2px);
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .message {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 26px;
+            font-weight: bold;
+            color: #ffd966;
+            text-shadow: 0 0 20px #ffaa00, 0 0 40px #ff5500;
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        /* Пушки — картинка cannon.png (или запасной вариант) */
+        .cannons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0 10px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 20;
+        }
+
+        .cannon {
+            width: 110px;
+            height: 110px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            font-weight: 900;
+            color: #0ff;
+            text-shadow: 0 0 20px cyan;
+            cursor: pointer;
+            transition: 0.07s;
+            touch-action: manipulation;
+            /* Картинка пушки */
+            background-image: url('cannon.png');
+        }
+
+        /* Запасной вариант, если нет картинки */
+        .cannon.fallback {
+            background: linear-gradient(145deg, #1e263f, #0c0f1a);
+            border: 3px solid #0ff;
+            border-radius: 30px 30px 60% 60%;
+            box-shadow: 0 0 30px #0ff, inset 0 0 20px rgba(0,255,255,0.3);
+            background-image: none;
+        }
+
+        .cannon:active {
+            transform: scale(0.85);
+            filter: brightness(1.5);
+        }
+
+        .cannon.fire {
+            filter: brightness(2) drop-shadow(0 0 20px white);
+            transform: scale(0.9);
+        }
+
+        /* Словарь */
+        .dictionary {
+            background: rgba(8, 12, 25, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            padding: 20px;
+            border: 1px solid cyan;
+            margin-top: 15px;
+            position: relative;
+            z-index: 15;
+        }
+
+        .progress {
+            height: 22px;
+            background: #151e2a;
+            border-radius: 30px;
+            margin-bottom: 18px;
+            overflow: hidden;
+            border: 1px solid cyan;
+        }
+
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #0ff, #c0f);
+            box-shadow: 0 0 25px #0ff;
+            transition: width 0.2s;
+        }
+
+        .dict-header {
+            display: flex;
+            justify-content: space-between;
+            color: #bfffff;
+            font-size: 24px;
+            margin-bottom: 15px;
+            text-shadow: 0 0 8px cyan;
+        }
+
+        .word-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            max-height: 170px;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .word-chip {
+            background: #0e1a2a;
+            border-left: 8px solid #0ff;
+            padding: 10px 22px;
+            border-radius: 50px;
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+        }
+
+        .word-chip span {
+            background: #005f73;
+            padding: 4px 14px;
+            border-radius: 40px;
+            margin-left: 8px;
+            color: #ffd966;
+        }
+
+        /* Оверлеи */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            color: white;
+        }
+
+        .hidden { display: none !important; }
+
+        .restart-btn {
+            background: transparent;
+            border: 4px solid cyan;
+            color: cyan;
+            font-size: 38px;
+            padding: 18px 60px;
+            border-radius: 100px;
+            margin-top: 35px;
+            cursor: pointer;
+            box-shadow: 0 0 40px cyan;
+            transition: 0.15s;
+            font-weight: bold;
+        }
+
+        .restart-btn:active {
+            background: cyan;
+            color: black;
+        }
+
+        .gameover-title {
+            font-size: 60px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 30px red;
+            color: #ff8888;
+        }
+
+        @media (max-width: 700px) {
+            .cannon { width: 80px; height: 80px; font-size: 40px; }
+            .learned-counter { font-size: 22px; padding: 5px 15px; }
+            .score { font-size: 26px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game" id="game">
+        <!-- Космический фон -->
+        <div class="space-bg" id="spaceBg">
+            <div class="planet planet1"></div>
+            <div class="planet planet2"></div>
+            <div class="planet planet3"></div>
+        </div>
+
+        <!-- Верхняя панель -->
+        <div class="top">
+            <div class="lives" id="livesContainer"></div>
+            <div class="stats-right">
+                <div class="learned-counter" id="learnedCounter">0/34</div>
+                <div class="score" id="scoreDisplay">0</div>
+                <div class="pause-btn" id="pauseBtn">⏸</div>
+            </div>
+        </div>
+
+        <!-- Canvas с кометой -->
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="1000" height="1100"></canvas>
+            <div class="message" id="messageEl">⚡ СТАРТ ⚡</div>
+        </div>
+
+        <!-- Пушки с буквами (картинка cannon.png) -->
+        <div class="cannons" id="cannonPanel">
+            <div class="cannon" data-letter="А">А</div>
+            <div class="cannon" data-letter="О">О</div>
+            <div class="cannon" data-letter="Е">Е</div>
+            <div class="cannon" data-letter="И">И</div>
+            <div class="cannon" data-letter="Я">Я</div>
+            <div class="cannon" data-letter="Ы">Ы</div>
+            <div class="cannon" data-letter="Ю">Ю</div>
+            <div class="cannon" data-letter="Э">Э</div>
+        </div>
+
+        <!-- Словарь -->
+        <div class="dictionary">
+            <div class="progress">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="dict-header">
+                <span>📡 ГАЛАКТИЧЕСКИЙ АРХИВ</span>
+                <span id="learnedCountDetail">0 / 34</span>
+            </div>
+            <div class="word-grid" id="wordGrid"></div>
+        </div>
+
+        <!-- Оверлей паузы -->
+        <div id="pauseOverlay" class="overlay hidden">
+            <div style="font-size: 80px; margin-bottom: 20px;">⏸</div>
+            <div style="font-size: 48px; margin-bottom: 30px;">ГИПЕРСОН</div>
+            <div class="restart-btn" id="resumeBtn">ПРОДОЛЖИТЬ</div>
+            <div class="restart-btn" id="restartFromPauseBtn">ЗАНОВО</div>
+        </div>
+
+        <!-- Оверлей поражения -->
+        <div id="gameoverOverlay" class="overlay hidden">
+            <div class="gameover-title">✧ ЩИТ ПАЛ ✧</div>
+            <div style="font-size: 32px; margin-bottom: 20px; color: #aaa;">КОРАБЛЬ РАЗРУШЕН</div>
+            <div style="font-size: 26px; margin-bottom: 30px;" id="gameoverStats"></div>
+            <div class="restart-btn" id="gameoverRestartBtn">ЗАПУСТИТЬ ЗАНОВО</div>
+        </div>
+
+        <!-- Оверлей победы -->
+        <div id="victoryOverlay" class="overlay hidden">
+            <div style="font-size: 70px; text-shadow: 0 0 40px cyan; margin-bottom: 20px;">✧ ПОБЕДА ✧</div>
+            <div style="font-size: 36px; margin-bottom: 20px;">ГАЛАКТИКА СПАСЕНА</div>
+            <div style="font-size: 28px; margin-bottom: 30px;" id="victoryStats"></div>
+            <div class="restart-btn" id="victoryRestartBtn">НОВАЯ МИССИЯ</div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            "use strict";
+
+            // ----------------------------------------------------------------
+            // 1. ТОЧНЫЙ СПИСОК — 34 СЛОВА (по твоему списку)
+            // ----------------------------------------------------------------
+            const wordsData = [
+                // п.л.садник аи
+                { full: "палисадник", display: "п•л•садник", missing: [1,3], letters: ["А","И"] },
+                // п.литра а
+                { full: "палитра", display: "п•литра", missing: [1], letters: ["А"] },
+                // п.н.рама ао
+                { full: "панорама", display: "п•н•рама", missing: [1,3], letters: ["А","О"] },
+                // п..н..рамный ао
+                { full: "панорамный", display: "п•н•рамный", missing: [1,3], letters: ["А","О"] },
+                // панц.рь и
+                { full: "панцирь", display: "панц•рь", missing: [4], letters: ["И"] },
+                // п.раграф а
+                { full: "параграф", display: "п•раграф", missing: [1], letters: ["А"] },
+                // п.р.докс аа
+                { full: "парадокс", display: "п•р•докс", missing: [1,3], letters: ["А","А"] },
+                // п.р.доксальный аа
+                { full: "парадоксальный", display: "п•р•доксальный", missing: [1,3], letters: ["А","А"] },
+                // п.раш.т аю
+                { full: "парашют", display: "п•раш•т", missing: [1,5], letters: ["А","Ю"] },
+                // п.триот а
+                { full: "патриот", display: "п•триот", missing: [1], letters: ["А"] },
+                // п.триотизм а
+                { full: "патриотизм", display: "п•триотизм", missing: [1], letters: ["А"] },
+                // п.триотический а
+                { full: "патриотический", display: "п•триотический", missing: [1], letters: ["А"] },
+                // п.йзаж е
+                { full: "пейзаж", display: "п•йзаж", missing: [1], letters: ["Е"] },
+                // п.йзажный е
+                { full: "пейзажный", display: "п•йзажный", missing: [1], letters: ["Е"] },
+                // п.рила е
+                { full: "перила", display: "п•рила", missing: [1], letters: ["Е"] },
+                // п.ри.д ео
+                { full: "период", display: "п•ри•д", missing: [1,4], letters: ["Е","О"] },
+                // п.ри.дический ео
+                { full: "периодический", display: "п•ри•дический", missing: [1,4], letters: ["Е","О"] },
+                // п.сс.мист еи
+                { full: "пессимист", display: "п•сс•мист", missing: [1,4], letters: ["Е","И"] },
+                // п.сс.мистичный еи
+                { full: "пессимистичный", display: "п•сс•мистичный", missing: [1,4], letters: ["Е","И"] },
+                // п.сс.мизм еи
+                { full: "пессимизм", display: "п•сс•мизм", missing: [1,4], letters: ["Е","И"] },
+                // подл.нный и
+                { full: "подлинный", display: "подл•нный", missing: [4], letters: ["И"] },
+                // подр.жать а
+                { full: "подражать", display: "подр•жать", missing: [4], letters: ["А"] },
+                // подр.жание а
+                { full: "подражание", display: "подр•жание", missing: [4], letters: ["А"] },
+                // подр.жатель а
+                { full: "подражатель", display: "подр•жатель", missing: [4], letters: ["А"] },
+                // п.зиция о
+                { full: "позиция", display: "п•зиция", missing: [1], letters: ["О"] },
+                // п.кой о
+                { full: "покой", display: "п•кой", missing: [1], letters: ["О"] },
+                // п.к.ление оо
+                { full: "поколение", display: "п•к•ление", missing: [1,3], letters: ["О","О"] },
+                // п.лемика о
+                { full: "полемика", display: "п•лемика", missing: [1], letters: ["О"] },
+                // п.лемичный о
+                { full: "полемичный", display: "п•лемичный", missing: [1], letters: ["О"] },
+                // п.л.ровать ои
+                { full: "полировать", display: "п•л•ровать", missing: [1,3], letters: ["О","И"] },
+                // п.л.рованный ои
+                { full: "полированный", display: "п•л•рованный", missing: [1,3], letters: ["О","И"] },
+                // п.р.жать оа
+                { full: "поражать", display: "п•р•жать", missing: [1,3], letters: ["О","А"] },
+                // п.р.жение оа
+                { full: "поражение", display: "п•р•жение", missing: [1,3], letters: ["О","А"] },
+                // п.р.зить оа
+                { full: "поразить", display: "п•р•зить", missing: [1,3], letters: ["О","А"] },
+                // п.р.зительный оа
+                { full: "поразительный", display: "п•р•зительный", missing: [1,3], letters: ["О","А"] },
+                // п.с.щать ое
+                { full: "посещать", display: "п•с•щать", missing: [1,3], letters: ["О","Е"] },
+                // п.с.щение ое
+                { full: "посещение", display: "п•с•щение", missing: [1,3], letters: ["О","Е"] },
+                // п.с.титель ое
+                { full: "посетитель", display: "п•с•титель", missing: [1,3], letters: ["О","Е"] },
+                // прав.ло и
+                { full: "правило", display: "прав•ло", missing: [4], letters: ["И"] },
+                // прав.льный и
+                { full: "правильный", display: "прав•льный", missing: [4], letters: ["И"] },
+                // предв.рительный а
+                { full: "предварительный", display: "предв•рительный", missing: [5], letters: ["А"] },
+                // пр.з.нтация ее
+                { full: "презентация", display: "пр•з•нтация", missing: [2,4], letters: ["Е","Е"] },
+                // пр.зидент е
+                { full: "президент", display: "пр•зидент", missing: [2], letters: ["Е"] },
+                // пр.зидентский е
+                { full: "президентский", display: "пр•зидентский", missing: [2], letters: ["Е"] },
+                // пр.зидиум е
+                { full: "президиум", display: "пр•зидиум", missing: [2], letters: ["Е"] },
+                // преобр.зить а
+                { full: "преобразить", display: "преобр•зить", missing: [6], letters: ["А"] },
+                // преобр.жение а
+                { full: "преображение", display: "преобр•жение", missing: [6], letters: ["А"] },
+                // преод.леть о
+                { full: "преодолеть", display: "преод•леть", missing: [5], letters: ["О"] },
+                // преод.ление о
+                { full: "преодоление", display: "преод•ление", missing: [5], letters: ["О"] },
+                // пр.ц.дент еи
+                { full: "прецедент", display: "пр•ц•дент", missing: [2,4], letters: ["Е","Е"] },
+                // пр.в.легия ие
+                { full: "привилегия", display: "пр•в•легия", missing: [2,5], letters: ["И","Е"] },
+                // пр.в.легированный ие
+                { full: "привилегированный", display: "пр•в•легированный", missing: [2,5], letters: ["И","Е"] },
+                // пр.м.тивный Ии
+                { full: "примитивный", display: "пр•м•тивный", missing: [2,4], letters: ["И","И"] },
+                // пр.ор.тет ио
+                { full: "приоритет", display: "пр•ор•тет", missing: [2,5], letters: ["И","О"] },
+                // пр.ор.тетный ио
+                { full: "приоритетный", display: "пр•ор•тетный", missing: [2,5], letters: ["И","О"] },
+                // пр.винция о
+                { full: "провинция", display: "пр•винция", missing: [2], letters: ["О"] },
+                // пр.винциальный о
+                { full: "провинциальный", display: "пр•винциальный", missing: [2], letters: ["О"] },
+                // пров.цировать о
+                { full: "провоцировать", display: "пров•цировать", missing: [4], letters: ["О"] },
+                // пр.н.цательный ои
+                { full: "проницательный", display: "пр•н•цательный", missing: [2,4], letters: ["О","И"] }
+            ];
+
+            // ----------------------------------------------------------------
+            // 2. ИНИЦИАЛИЗАЦИЯ
+            // ----------------------------------------------------------------
+            let words = wordsData.map((w, idx) => ({
+                id: idx,
+                full: w.full,
+                display: w.display,
+                missing: [...w.missing],
+                letters: [...w.letters],
+                learned: false
+            }));
+
+            let currentComet = null;
+            let particles = [];
+            let score = 0;
+            let lives = 5;
+            const MAX_LIVES = 7;
+            let paused = false;
+            let victory = false;
+            let gameActive = true;
+            let gameOver = false;
+            let spawnTimer = 0;
+            const SPAWN_DELAY = 45;
+
+            // UI
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const msgEl = document.getElementById('messageEl');
+            const scoreEl = document.getElementById('scoreDisplay');
+            const livesContainer = document.getElementById('livesContainer');
+            const progressFill = document.getElementById('progressFill');
+            const learnedCounter = document.getElementById('learnedCounter');
+            const learnedCountDetail = document.getElementById('learnedCountDetail');
+            const wordGrid = document.getElementById('wordGrid');
+
+            // Картинки
+            const cometImg = new Image();
+            cometImg.src = 'comet.png';
+            const cannonImg = new Image();
+            cannonImg.src = 'cannon.png';
+
+            // ----------------------------------------------------------------
+            // 3. РАЗМЕР КАНВАСА
+            // ----------------------------------------------------------------
+            function resizeCanvas() {
+                const container = document.querySelector('.canvas-wrap');
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                canvas.width = w;
+                canvas.height = h;
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // ----------------------------------------------------------------
+            // 4. ЗВЁЗДЫ
+            // ----------------------------------------------------------------
+            function initStars() {
+                const spaceBg = document.getElementById('spaceBg');
+                for (let i = 0; i < 100; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.style.width = (Math.random() * 4 + 1) + 'px';
+                    star.style.height = star.style.width;
+                    star.style.left = Math.random() * 100 + '%';
+                    star.style.top = Math.random() * 100 + '%';
+                    star.style.animationDelay = Math.random() * 3 + 's';
+                    star.style.animationDuration = (Math.random() * 6 + 4) + 's';
+                    spaceBg.appendChild(star);
+                }
+            }
+            initStars();
+
+            // ----------------------------------------------------------------
+            // 5. ПРОВЕРКА КАРТИНОК
+            // ----------------------------------------------------------------
+            function checkImages() {
+                // fallback для пушек, если картинка не загрузится
+                const cannons = document.querySelectorAll('.cannon');
+                cometImg.onerror = () => { console.log('comet.png не найдена, используется рисованный вариант'); };
+                cannonImg.onerror = () => {
+                    console.log('cannon.png не найдена, используется fallback');
+                    cannons.forEach(c => c.classList.add('fallback'));
+                };
+            }
+            checkImages();
+
+            // ----------------------------------------------------------------
+            // 6. UI
+            // ----------------------------------------------------------------
+            function updateLivesUI() {
+                livesContainer.innerHTML = '';
+                for (let i = 0; i < MAX_LIVES; i++) {
+                    const life = document.createElement('div');
+                    life.className = 'life' + (i < lives ? '' : ' dim');
+                    livesContainer.appendChild(life);
+                }
+            }
+
+            function setMessage(text, isGood = true) {
+                msgEl.innerText = '⚡ ' + text + ' ⚡';
+                msgEl.style.color = isGood ? '#ffd966' : '#ff7b7b';
+                msgEl.style.textShadow = isGood ? '0 0 20px orange' : '0 0 20px red';
+            }
+
+            function updateLearnedCounter() {
+                const learned = words.filter(w => w.learned).length;
+                const total = words.length;
+                learnedCounter.innerText = learned + '/' + total;
+                learnedCountDetail.innerText = learned + ' / ' + total;
+            }
+
+            function updateDictionary() {
+                const learned = words.filter(w => w.learned).length;
+                const total = words.length;
+                progressFill.style.width = total ? (learned / total * 100) + '%' : '0%';
+                updateLearnedCounter();
+
+                wordGrid.innerHTML = '';
+                words.filter(w => w.learned).forEach(w => {
+                    const chip = document.createElement('div');
+                    chip.className = 'word-chip';
+                    let html = '';
+                    for (let i = 0; i < w.full.length; i++) {
+                        if (w.missing.includes(i)) html += '<span>' + w.full[i] + '</span>';
+                        else html += w.full[i];
+                    }
+                    chip.innerHTML = html;
+                    wordGrid.appendChild(chip);
+                });
+
+                if (learned === total && total > 0 && !victory && gameActive) {
+                    victory = true;
+                    document.getElementById('victoryOverlay').classList.remove('hidden');
+                    document.getElementById('victoryStats').innerHTML = `Спасено слов: ${score/100}<br>Изучено: ${learned}/${total}`;
+                }
+            }
+
+            // ----------------------------------------------------------------
+            // 7. ВЗРЫВ
+            // ----------------------------------------------------------------
+            function createExplosion(x, y) {
+                for (let i = 0; i < 25; i++) {
+                    particles.push({
+                        x, y,
+                        vx: (Math.random() - 0.5) * 9,
+                        vy: (Math.random() - 0.5) * 9 - 3,
+                        life: 30 + Math.floor(Math.random() * 40),
+                        color: `hsl(${Math.random() * 60 + 180}, 100%, 65%)`
+                    });
+                }
+            }
+
+            // ----------------------------------------------------------------
+            // 8. ВЫСТРЕЛ
+            // ----------------------------------------------------------------
+            function fireCannon(letter) {
+                const cannons = document.querySelectorAll('.cannon');
+                cannons.forEach(c => {
+                    if (c.dataset.letter === letter) {
+                        c.classList.add('fire');
+                        setTimeout(() => c.classList.remove('fire'), 160);
+                    }
+                });
+            }
+
+            // ----------------------------------------------------------------
+            // 9. СПАВН КОМЕТЫ (ПО ЦЕНТРУ)
+            // ----------------------------------------------------------------
+            function spawnComet() {
+                if (paused || victory || !gameActive || gameOver) return;
+                if (currentComet !== null) return;
+                
+                const available = words.filter(w => !w.learned);
+                if (available.length === 0) return;
+
+                const word = available[Math.floor(Math.random() * available.length)];
+                
+                // ЧЁТКО ПО ЦЕНТРУ
+                const x = canvas.width / 2;
+                const y = -80;
+
+                currentComet = {
+                    id: Date.now() + Math.random(),
+                    wordId: word.id,
+                    display: word.display,
+                    currentDisplay: word.display,
+                    missing: [...word.missing],
+                    letters: [...word.letters],
+                    step: 0,
+                    x, y,
+                    speed: 0.75,
+                    width: 220,   // для коллизий
+                    height: 90
+                };
+            }
+
+            // ----------------------------------------------------------------
+            // 10. УНИЧТОЖЕНИЕ
+            // ----------------------------------------------------------------
+            function destroyComet() {
+                if (!currentComet) return;
+
+                const word = words.find(w => w.id === currentComet.wordId);
+                if (word && !word.learned) {
+                    word.learned = true;  // сразу в словарь
+                }
+
+                score += 100;
+                scoreEl.innerText = score;
+
+                if (score % 450 < 50 && lives < MAX_LIVES) {
+                    lives++;
+                    updateLivesUI();
+                    setMessage('+1 ЩИТ', true);
+                }
+
+                createExplosion(currentComet.x, currentComet.y);
+                currentComet = null;
+                updateDictionary();
+            }
+
+            // ----------------------------------------------------------------
+            // 11. БУКВА
+            // ----------------------------------------------------------------
+            function handleLetter(letter) {
+                if (paused || victory || !gameActive || gameOver) return;
+                fireCannon(letter);
+
+                if (!currentComet) {
+                    setMessage('НЕТ ЦЕЛИ', false);
+                    return;
+                }
+
+                const comet = currentComet;
+                
+                if (comet.step >= comet.letters.length) {
+                    destroyComet();
+                    setMessage('КОМЕТА УНИЧТОЖЕНА', true);
+                    return;
+                }
+
+                const expected = comet.letters[comet.step];
+
+                if (letter === expected) {
+                    // попадание
+                    const idx = comet.missing[comet.step];
+                    let arr = comet.currentDisplay.split('');
+                    arr[idx] = letter;
+                    comet.currentDisplay = arr.join('');
+                    comet.step++;
+
+                    setMessage('ПОПАДАНИЕ!', true);
+
+                    if (comet.step === comet.letters.length) {
+                        destroyComet();
+                        setMessage('КОМЕТА РАЗРУШЕНА', true);
+                    }
+                } else {
+                    // ошибка
+                    setMessage('ОШИБКА', false);
+                    lives--;
+                    updateLivesUI();
+                    
+                    comet.step = 0;
+                    comet.currentDisplay = comet.display;
+
+                    if (lives <= 0) {
+                        gameActive = false;
+                        gameOver = true;
+                        setMessage('КОРАБЛЬ РАЗРУШЕН', false);
+                        document.getElementById('gameoverOverlay').classList.remove('hidden');
+                        document.getElementById('gameoverStats').innerHTML = `Уничтожено слов: ${score/100}<br>Изучено: ${words.filter(w => w.learned).length}/${words.length}`;
+                    }
+                }
+            }
+
+            // ----------------------------------------------------------------
+            // 12. ДВИЖЕНИЕ
+            // ----------------------------------------------------------------
+            function move() {
+                if (paused || victory) return;
+
+                if (currentComet) {
+                    currentComet.y += currentComet.speed;
+                    
+                    if (currentComet.y > canvas.height + 80) {
+                        currentComet = null;
+                        lives--;
+                        updateLivesUI();
+                        setMessage('ПРОБОИНА', false);
+                        
+                        if (lives <= 0) {
+                            gameActive = false;
+                            gameOver = true;
+                            setMessage('КОРАБЛЬ РАЗРУШЕН', false);
+                            document.getElementById('gameoverOverlay').classList.remove('hidden');
+                            document.getElementById('gameoverStats').innerHTML = `Уничтожено слов: ${score/100}<br>Изучено: ${words.filter(w => w.learned).length}/${words.length}`;
+                        }
+                    }
+                }
+
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.1;
+                    p.life--;
+                    if (p.life <= 0 || p.y > canvas.height + 50) {
+                        particles.splice(i, 1);
+                    }
+                }
+            }
+
+            // ----------------------------------------------------------------
+            // 13. ОТРИСОВКА
+            // ----------------------------------------------------------------
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // КОМЕТА с картинкой
+                if (currentComet) {
+                    const c = currentComet;
+                    
+                    // Картинка кометы (подложка)
+                    if (cometImg.complete && cometImg.naturalHeight > 0) {
+                        ctx.drawImage(cometImg, c.x - 110, c.y - 45, 220, 90);
+                    } else {
+                        // fallback — рисованный астероид
+                        ctx.save();
+                        ctx.translate(c.x, c.y);
+                        ctx.shadowColor = '#0ff';
+                        ctx.shadowBlur = 35;
+                        ctx.fillStyle = '#2a1e4a';
+                        ctx.strokeStyle = '#0ff';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        for (let i = 0; i < 6; i++) {
+                            const angle = i * 60 * Math.PI / 180;
+                            const px = 110 * Math.cos(angle);
+                            const py = 45 * Math.sin(angle);
+                            if (i === 0) ctx.moveTo(px, py);
+                            else ctx.lineTo(px, py);
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    // Текст ПОВЕРХ картинки
+                    ctx.font = 'bold 26px "Courier New", monospace';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = '#0ff';
+                    ctx.shadowBlur = 15;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(c.currentDisplay, c.x, c.y);
+                    ctx.shadowBlur = 0;
+                }
+
+                // Частицы взрыва
+                particles.forEach(p => {
+                    ctx.globalAlpha = p.life / 60;
+                    ctx.fillStyle = p.color;
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = p.color;
+                    ctx.fillRect(p.x, p.y, 7, 7);
+                });
+                ctx.globalAlpha = 1;
+                ctx.shadowBlur = 0;
+            }
+
+            // ----------------------------------------------------------------
+            // 14. ИГРОВОЙ ЦИКЛ
+            // ----------------------------------------------------------------
+            function gameLoop() {
+                if (!paused && !victory && gameActive && !gameOver) {
+                    spawnTimer++;
+                    if (spawnTimer >= SPAWN_DELAY && currentComet === null) {
+                        spawnComet();
+                        spawnTimer = 0;
+                    }
+                    move();
+                }
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+
+            // ----------------------------------------------------------------
+            // 15. РЕСТАРТ
+            // ----------------------------------------------------------------
+            function restartGame() {
+                words = wordsData.map((w, idx) => ({
+                    id: idx,
+                    full: w.full,
+                    display: w.display,
+                    missing: [...w.missing],
+                    letters: [...w.letters],
+                    learned: false
+                }));
+
+                currentComet = null;
+                particles = [];
+                score = 0;
+                lives = 5;
+                paused = false;
+                victory = false;
+                gameActive = true;
+                gameOver = false;
+                spawnTimer = 0;
+
+                scoreEl.innerText = '0';
+                updateLivesUI();
+                updateDictionary();
+                setMessage('НОВАЯ МИССИЯ', true);
+                
+                document.getElementById('pauseOverlay').classList.add('hidden');
+                document.getElementById('victoryOverlay').classList.add('hidden');
+                document.getElementById('gameoverOverlay').classList.add('hidden');
+            }
+
+            // ----------------------------------------------------------------
+            // 16. СОБЫТИЯ
+            // ----------------------------------------------------------------
+            function initEvents() {
+                document.querySelectorAll('.cannon').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const letter = e.currentTarget.dataset.letter;
+                        handleLetter(letter);
+                    });
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        const letter = e.currentTarget.dataset.letter;
+                        handleLetter(letter);
+                    });
+                });
+
+                document.getElementById('pauseBtn').addEventListener('click', () => {
+                    if (victory || gameOver) return;
+                    paused = !paused;
+                    document.getElementById('pauseOverlay').classList.toggle('hidden', !paused);
+                    if (!paused) setMessage('ПРОДОЛЖЕНИЕ', true);
+                });
+
+                document.getElementById('restartFromPauseBtn').addEventListener('click', () => {
+                    restartGame();
+                    paused = false;
+                    document.getElementById('pauseOverlay').classList.add('hidden');
+                });
+                document.getElementById('resumeBtn').addEventListener('click', () => {
+                    paused = false;
+                    document.getElementById('pauseOverlay').classList.add('hidden');
+                    setMessage('ПРОДОЛЖЕНИЕ', true);
+                });
+                document.getElementById('victoryRestartBtn').addEventListener('click', restartGame);
+                document.getElementById('gameoverRestartBtn').addEventListener('click', restartGame);
+            }
+
+            // ----------------------------------------------------------------
+            // 17. СТАРТ
+            // ----------------------------------------------------------------
+            function init() {
+                updateLivesUI();
+                updateDictionary();
+                initEvents();
+                gameLoop();
+            }
+
+            init();
+        })();
+    </script>
 </body>
 </html>
